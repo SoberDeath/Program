@@ -1,0 +1,6 @@
+APP_NAME = "AppManager"
+APP_VERSION = "1.1.0"
+APP_VERSION_SHORT = "1.1"
+APP_AUTHOR = "SoberDeath"
+APP_DESCRIPTION = "Windows Workspace Control System"
+APP_COPYRIGHT = "Copyright © 2026 SoberDeath"
