@@ -8,7 +8,6 @@ import time
 
 CYAN = "\033[96m"
 BRIGHT = "\033[1;96m"
-DIM = "\033[2;36m"
 RESET = "\033[0m"
 HIDE_CURSOR = "\033[?25l"
 SHOW_CURSOR = "\033[?25h"
@@ -29,40 +28,63 @@ SCAN_WIDTH = 54
 
 
 def terminal_width() -> int:
-    return max(110, shutil.get_terminal_size((120, 30)).columns)
+    return max(118, shutil.get_terminal_size((120, 36)).columns)
 
 
 def center(line: str, width: int) -> str:
     return line.center(width)
 
 
-def frame_banner(lines: list[str], status: str = "", progress: int | None = None) -> str:
+def framed_banner(lines: list[str], status: str = "", progress: int | None = None) -> str:
     width = terminal_width()
     content_width = max(len(line) for line in BANNER)
     top = "╔" + "═" * (content_width + 4) + "╗"
     bottom = "╚" + "═" * (content_width + 4) + "╝"
 
-    output = [center(top, width)]
+    out = [center(top, width)]
     for line in lines:
-        output.append(center("║  " + line.ljust(content_width) + "  ║", width))
-    output.append(center(bottom, width))
-    output.append("")
-    output.append(center("APPMANAGER  //  VERSION 1.0", width))
-    output.append(center("WINDOWS WORKSPACE CONTROL SYSTEM", width))
+        out.append(center("║  " + line.ljust(content_width) + "  ║", width))
+    out.append(center("║" + " " * (content_width + 4) + "║", width))
+    out.append(center("║" + "VERSION 1.0".center(content_width + 4) + "║", width))
+    out.append(center("║" + "WINDOWS WORKSPACE CONTROL SYSTEM".center(content_width + 4) + "║", width))
+    out.append(center(bottom, width))
 
     if progress is not None:
         progress = max(0, min(progress, SCAN_WIDTH))
         bar = "[" + "█" * progress + "░" * (SCAN_WIDTH - progress) + "]"
-        output.extend(["", center(bar, width)])
-
+        out.extend(["", center(bar, width)])
     if status:
-        output.append(center(status, width))
+        out.append(center(status, width))
+    return "\n".join(out)
 
-    return "\n".join(output)
+
+def build_menu() -> str:
+    width = terminal_width()
+    menu_width = 82
+    top = "╔" + "═" * menu_width + "╗"
+    split = "╠" + "═" * menu_width + "╣"
+    bottom = "╚" + "═" * menu_width + "╝"
+    rows = [
+        top,
+        "║" + "BUILD CONTROL".center(menu_width) + "║",
+        split,
+        "║" + "".ljust(menu_width) + "║",
+        "║" + "   [1]  QUICK BUILD        Progress screen only".ljust(menu_width) + "║",
+        "║" + "   [2]  TECHNICAL BUILD    Full compiler / PyInstaller output".ljust(menu_width) + "║",
+        "║" + "   [3]  EXIT               Close build system".ljust(menu_width) + "║",
+        "║" + "".ljust(menu_width) + "║",
+        bottom,
+    ]
+    return "\n".join(center(row, width) for row in rows)
 
 
-def draw(frame: str, colour: str = CYAN) -> None:
-    sys.stdout.write(HOME + colour + frame + RESET + "\033[J")
+def final_screen() -> str:
+    return framed_banner(BANNER) + "\n\n" + build_menu()
+
+
+def draw(frame: str, clear_tail: bool = True) -> None:
+    tail = "\033[J" if clear_tail else ""
+    sys.stdout.write(HOME + BRIGHT + frame + RESET + tail)
     sys.stdout.flush()
 
 
@@ -82,52 +104,64 @@ def glitch(lines: list[str]) -> list[str]:
         for col, char in enumerate(line):
             if char != " ":
                 positions.append((row, col))
-
     if not positions:
         return lines
-
-    for row, col in random.sample(positions, min(random.randint(7, 18), len(positions))):
+    for row, col in random.sample(positions, min(random.randint(8, 20), len(positions))):
         result[row][col] = random.choice(GLITCH_CHARS)
     return ["".join(line) for line in result]
+
+
+def animate() -> None:
+    sys.stdout.write(HIDE_CURSOR + CLEAR + HOME)
+    sys.stdout.flush()
+    try:
+        for lines in reveal_frames():
+            draw(framed_banner(lines, "INITIALIZING // ASSEMBLING WORDMARK"))
+            time.sleep(0.05)
+
+        for index in range(10):
+            lines = glitch(BANNER) if index % 2 == 0 else BANNER
+            draw(framed_banner(lines, "SIGNAL LOCK // STABILIZING"))
+            time.sleep(0.05)
+
+        for amount in range(0, SCAN_WIDTH + 1, 3):
+            draw(framed_banner(BANNER, "BOOT SEQUENCE // SYSTEM CHECK", amount))
+            time.sleep(0.03)
+
+        draw(framed_banner(BANNER, "SYSTEM READY // BUILD CONTROL ONLINE", SCAN_WIDTH))
+        time.sleep(0.30)
+        draw(final_screen())
+    finally:
+        sys.stdout.write(SHOW_CURSOR + RESET)
+        sys.stdout.flush()
+
+
+def render_menu() -> None:
+    sys.stdout.write(CLEAR + HOME)
+    draw(final_screen())
+
+
+def render_header() -> None:
+    sys.stdout.write(CLEAR + HOME)
+    draw(framed_banner(BANNER))
 
 
 def main() -> None:
     if os.name != "nt":
         return
-
     try:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     except (AttributeError, OSError):
         pass
-
-    # Trigger VT/ANSI support in Windows Terminal and modern consoles.
     os.system("")
-    sys.stdout.write(HIDE_CURSOR + CLEAR + HOME)
-    sys.stdout.flush()
 
-    try:
-        # 1. Large APPMANAGER wordmark builds from left to right.
-        for lines in reveal_frames():
-            draw(frame_banner(lines, "INITIALIZING // ASSEMBLING WORDMARK"), BRIGHT)
-            time.sleep(0.055)
-
-        # 2. Short glitch burst while keeping the exact same drawing area.
-        for index in range(9):
-            lines = glitch(BANNER) if index % 2 == 0 else BANNER
-            draw(frame_banner(lines, "SIGNAL LOCK // STABILIZING"), BRIGHT)
-            time.sleep(0.055)
-
-        # 3. Clean banner + scanline/progress sweep.
-        for amount in range(0, SCAN_WIDTH + 1, 3):
-            draw(frame_banner(BANNER, "BOOT SEQUENCE // SYSTEM CHECK", amount), CYAN)
-            time.sleep(0.035)
-
-        # 4. Final locked frame.
-        draw(frame_banner(BANNER, "SYSTEM READY // BUILD CONTROL ONLINE", SCAN_WIDTH), BRIGHT)
-        time.sleep(0.45)
-    finally:
-        sys.stdout.write(SHOW_CURSOR + RESET)
-        sys.stdout.flush()
+    mode = sys.argv[1].lower() if len(sys.argv) > 1 else "animate"
+    if mode == "--menu":
+        render_menu()
+    elif mode == "--header":
+        render_header()
+    else:
+        animate()
 
 
 if __name__ == "__main__":
