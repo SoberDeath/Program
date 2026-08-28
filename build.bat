@@ -93,22 +93,16 @@ goto menu
 :quick_screen
 set "pct=%~1"
 set "msg=%~2"
-set "bar=........................................"
-if %pct% GEQ 10 set "bar=####...................................."
-if %pct% GEQ 20 set "bar=########................................"
-if %pct% GEQ 45 set "bar=##################......................"
-if %pct% GEQ 55 set "bar=######################.................."
-if %pct% GEQ 95 set "bar=######################################.."
-if %pct% GEQ 100 set "bar=########################################"
-call :draw_header
-echo.
-echo                              QUICK BUILD
-echo.
-echo                [%bar%] %pct%%%
-echo.
-echo                     %msg%
-echo.
-echo                         PLEASE WAIT...
+where py >nul 2>&1
+if not errorlevel 1 (
+    py -3 "%ANIM%" --quick %pct% "%msg%"
+    exit /b 0
+)
+where python >nul 2>&1
+if not errorlevel 1 (
+    python "%ANIM%" --quick %pct% "%msg%"
+    exit /b 0
+)
 exit /b 0
 
 :progress
