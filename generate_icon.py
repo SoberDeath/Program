@@ -1,44 +1,65 @@
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 
-SIZE = 512
+# Render at a large master resolution and downsample every Windows icon size
+# independently. This keeps the title-bar/taskbar variants much sharper than
+# asking Windows to scale one small bitmap.
+MASTER = 1024
 OUT_DIR = Path("assets")
 OUT_DIR.mkdir(exist_ok=True)
 
-img = Image.new("RGBA", (SIZE, SIZE), (10, 14, 20, 255))
-draw = ImageDraw.Draw(img)
+BG = (7, 11, 17, 255)
+PANEL = (13, 22, 31, 255)
+CYAN = (54, 224, 230, 255)
+CYAN_DIM = (22, 111, 122, 255)
+WHITE = (225, 248, 249, 255)
 
-# Neon cyan terminal-inspired icon: rounded square, inner frame, and AM monogram.
-cyan = (88, 210, 212, 255)
-dim = (35, 95, 103, 255)
-white = (230, 246, 246, 255)
 
-pad = 34
-draw.rounded_rectangle((pad, pad, SIZE - pad, SIZE - pad), radius=72, outline=cyan, width=18)
-draw.rounded_rectangle((pad + 28, pad + 28, SIZE - pad - 28, SIZE - pad - 28), radius=52, outline=dim, width=5)
+def make_master() -> Image.Image:
+    img = Image.new("RGBA", (MASTER, MASTER), BG)
+    d = ImageDraw.Draw(img)
 
-# Draw a clean geometric AM mark without external font files.
-# A
-x0, y0 = 120, 150
-x1, y1 = 246, 360
-draw.line((x0, y1, (x0 + x1) // 2, y0), fill=cyan, width=30)
-draw.line(((x0 + x1) // 2, y0, x1, y1), fill=cyan, width=30)
-draw.line((153, 285, 214, 285), fill=cyan, width=24)
+    # Strong silhouette first: this is what remains readable at 16x16/24x24.
+    d.rounded_rectangle((70, 70, 954, 954), radius=190, fill=PANEL)
+    d.rounded_rectangle((70, 70, 954, 954), radius=190, outline=CYAN, width=34)
+    d.rounded_rectangle((112, 112, 912, 912), radius=150, outline=CYAN_DIM, width=10)
 
-# M
-mx0, mx1 = 275, 398
-my0, my1 = 160, 360
-draw.line((mx0, my1, mx0, my0), fill=white, width=28)
-draw.line((mx0, my0, (mx0 + mx1) // 2, 270), fill=white, width=28)
-draw.line(((mx0 + mx1) // 2, 270, mx1, my0), fill=white, width=28)
-draw.line((mx1, my0, mx1, my1), fill=white, width=28)
+    # Geometric AM monogram. No font dependency, so builds are reproducible.
+    # A: wide, heavy strokes with a high crossbar for small-size legibility.
+    d.line((210, 720, 350, 300), fill=CYAN, width=78)
+    d.line((350, 300, 490, 720), fill=CYAN, width=78)
+    d.line((270, 555, 430, 555), fill=CYAN, width=62)
 
-# Small terminal cursor accent.
-draw.rectangle((355, 390, 405, 408), fill=cyan)
+    # M: deliberately separated from A so the mark does not become a blob.
+    d.line((555, 720, 555, 320), fill=WHITE, width=72)
+    d.line((555, 320, 690, 535), fill=WHITE, width=72)
+    d.line((690, 535, 825, 320), fill=WHITE, width=72)
+    d.line((825, 320, 825, 720), fill=WHITE, width=72)
 
-png_path = OUT_DIR / "appmanager.png"
-ico_path = OUT_DIR / "appmanager.ico"
-img.save(png_path)
-img.save(ico_path, sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
-print(f"Generated {ico_path} and {png_path}")
+    # Terminal cursor is kept large enough to survive at taskbar size.
+    d.rounded_rectangle((705, 785, 830, 820), radius=10, fill=CYAN)
+    return img
+
+
+def resized(master: Image.Image, size: int) -> Image.Image:
+    return master.resize((size, size), Image.Resampling.LANCZOS)
+
+
+master = make_master()
+master.save(OUT_DIR / "appmanager.png", optimize=True)
+
+# Pillow stores all requested representations inside one .ico. Including the
+# intermediate sizes prevents blurry Windows title-bar/taskbar scaling.
+sizes = [16, 20, 24, 32, 40, 48, 64, 96, 128, 192, 256]
+frames = [resized(master, size) for size in sizes]
+frames[-1].save(
+    OUT_DIR / "appmanager.ico",
+    format="ICO",
+    append_images=frames[:-1],
+    sizes=[(size, size) for size in sizes],
+)
+
+print("Generated high-resolution AppManager icon set:")
+print("  assets/appmanager.png  (1024x1024 master)")
+print("  assets/appmanager.ico  (16..256px Windows icon set)")
