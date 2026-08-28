@@ -19,7 +19,6 @@ echo       ^|                                                                  ^
 echo       +------------------------------------------------------------------+
 echo.
 set /p "choice=            SELECT MODE  ^> "
-
 if "%choice%"=="1" goto normal
 if "%choice%"=="2" goto technical
 if "%choice%"=="3" exit /b 0
@@ -29,19 +28,14 @@ goto menu
 call :quick_screen 0 "INITIALIZING BUILD PIPELINE"
 call :quick_screen 10 "VERIFYING PYTHON ENVIRONMENT"
 cmd /d /c "py -3 --version >nul 2>&1" || goto quick_python_error
-
 call :quick_screen 20 "SYNCING BUILD DEPENDENCIES"
 cmd /d /c "py -3 -m pip install --upgrade -r requirements.txt >nul 2>&1" || goto quick_build_error
-
 call :quick_screen 45 "PURGING PREVIOUS BUILD CACHE"
 if exist "build" cmd /d /c "rmdir /s /q build >nul 2>&1"
-
 call :quick_screen 55 "COMPILING APPMANAGER"
 cmd /d /c "py -3 -m PyInstaller --noconfirm --clean AppManager.spec >nul 2>&1" || goto quick_build_error
-
 call :quick_screen 95 "VERIFYING RELEASE ARTIFACT"
 if not exist "dist\AppManager\AppManager.exe" goto quick_build_error
-
 call :quick_screen 100 "BUILD COMPLETE"
 timeout /t 1 /nobreak >nul
 cls
@@ -191,20 +185,19 @@ goto menu
 
 :logo
 echo.
+echo          ############################################################################
+echo          ##                                                                        ##
+echo          ##     AAAAA   PPPP   PPPP      M   M   AAAAA   N   N   AAAAA   GGGG     ##
+echo          ##     A   A   P   P  P   P     MM MM   A   A   NN  N   A   A   G        ##
+echo          ##     AAAAA   PPPP   PPPP      M M M   AAAAA   N N N   AAAAA   G GGG    ##
+echo          ##     A   A   P      P         M   M   A   A   N  NN   A   A   G   G    ##
+echo          ##     A   A   P      P         M   M   A   A   N   N   A   A    GGG     ##
+echo          ##                                                                        ##
+echo          ##                            E R                                          ##
+echo          ##                                                                        ##
+echo          ############################################################################
 echo.
-echo          ################################################################
-echo          ##                                                            ##
-echo          ##        ___    ____   ____    __  __    _    _   _          ##
-echo          ##       / _ \  ^|  _ \ ^|  _ \  ^|  \/  ^|  / \  ^| \ ^| ^|         ##
-echo          ##      / /_\ \ ^| ^|_) ^|^| ^|_) ^| ^| ^|\/^| ^| / _ \ ^|  \^| ^|         ##
-echo          ##      ^|  _  ^|^|  __/ ^|  __/  ^| ^|  ^| ^|/ ___ \^| ^|\  ^|         ##
-echo          ##      ^|_^| ^|_^|^|_^|    ^|_^|     ^|_^|  ^|_^|_/   \_\_^| \_^|         ##
-echo          ##                                                            ##
-echo          ##                    M A N A G E R                           ##
-echo          ##                                                            ##
-echo          ################################################################
-echo.
-echo                       APPMANAGER // VERSION 1.0
-echo                    WINDOWS WORKSPACE CONTROL SYSTEM
+echo                           APPMANAGER // VERSION 1.0
+echo                        WINDOWS WORKSPACE CONTROL SYSTEM
 echo.
 exit /b 0
