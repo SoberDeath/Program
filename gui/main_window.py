@@ -15,6 +15,7 @@ from .dashboard import DashboardPage
 from .theme import COLORS, FONT
 
 LOGGER = logging.getLogger(__name__)
+APP_VERSION = "1.0.0"
 
 
 class MainWindow(ctk.CTk):
@@ -34,7 +35,7 @@ class MainWindow(ctk.CTk):
         ctk.set_appearance_mode("dark")
         ctk.set_default_color_theme("blue")
         ctk.set_widget_scaling(float(config.data["settings"]["ui_scaling"]))
-        self.title("App Manager")
+        self.title(f"App Manager {APP_VERSION}")
         self.geometry("1180x780")
         self.minsize(940, 650)
         self.configure(fg_color=COLORS["bg"])
@@ -62,18 +63,54 @@ class MainWindow(ctk.CTk):
         self.sidebar = ctk.CTkFrame(self, width=220, corner_radius=0, fg_color=COLORS["sidebar"])
         self.sidebar.grid(row=0, column=0, sticky="nsew")
         self.sidebar.grid_propagate(False)
-        ctk.CTkLabel(self.sidebar, text="◆  APP MANAGER", font=(FONT, 17, "bold")).pack(anchor="w", padx=24, pady=(30, 35))
+
+        ctk.CTkLabel(
+            self.sidebar,
+            text="◆  APP MANAGER",
+            font=(FONT, 17, "bold"),
+        ).pack(anchor="w", padx=24, pady=(30, 35))
+
         self.nav: dict[str, ctk.CTkButton] = {}
         for glyph, label in (("▦", "Dashboard"), ("≡", "Profiles"), ("◉", "Processes"), ("⚙", "Settings")):
             button = ctk.CTkButton(
-                self.sidebar, text=f"{glyph}   {label}",
-                anchor="w", height=45, corner_radius=9, fg_color="transparent",
-                hover_color=COLORS["surface_hover"], font=(FONT, 13),
+                self.sidebar,
+                text=f"{glyph}   {label}",
+                anchor="w",
+                height=45,
+                corner_radius=9,
+                fg_color="transparent",
+                hover_color=COLORS["surface_hover"],
+                font=(FONT, 13),
                 command=lambda page=label: self.show(page),
             )
             button.pack(fill="x", padx=12, pady=3)
             self.nav[label] = button
-        ctk.CTkLabel(self.sidebar, text="LOCAL • PRIVATE", text_color=COLORS["muted"], font=(FONT, 9, "bold")).pack(side="bottom", anchor="w", padx=24, pady=24)
+
+        info = ctk.CTkFrame(self.sidebar, fg_color="transparent")
+        info.pack(side="bottom", fill="x", padx=20, pady=(10, 22))
+
+        ctk.CTkFrame(info, height=1, fg_color=COLORS["surface_hover"]).pack(fill="x", pady=(0, 14))
+        ctk.CTkLabel(
+            info,
+            text=f"App Manager  v{APP_VERSION}",
+            text_color=COLORS["text"],
+            font=(FONT, 10, "bold"),
+            anchor="w",
+        ).pack(fill="x")
+        ctk.CTkLabel(
+            info,
+            text="Offline workspace launcher",
+            text_color=COLORS["muted"],
+            font=(FONT, 9),
+            anchor="w",
+        ).pack(fill="x", pady=(3, 0))
+        ctk.CTkLabel(
+            info,
+            text="LOCAL  •  PRIVATE",
+            text_color=COLORS["muted"],
+            font=(FONT, 9, "bold"),
+            anchor="w",
+        ).pack(fill="x", pady=(8, 0))
 
     def _create_page(self, name: str) -> ctk.CTkFrame:
         if name == "Dashboard":
@@ -157,6 +194,7 @@ class MainWindow(ctk.CTk):
     def _start_tray(self) -> None:
         if self.exiting:
             return
+
         def create_tray():
             from core.tray_manager import TrayManager
             tray = TrayManager(
@@ -166,7 +204,12 @@ class MainWindow(ctk.CTk):
             )
             tray.start(list(self.profiles.profiles))
             return tray
-        self.executor.submit_ui(create_tray, lambda tray: setattr(self, "tray", tray), on_error=lambda error: self.show_status("warning", f"System tray unavailable: {error}"))
+
+        self.executor.submit_ui(
+            create_tray,
+            lambda tray: setattr(self, "tray", tray),
+            on_error=lambda error: self.show_status("warning", f"System tray unavailable: {error}"),
+        )
 
     def _refresh_tray(self) -> None:
         if self.tray:
@@ -178,10 +221,13 @@ class MainWindow(ctk.CTk):
             return
         self.activity.grid()
         self.activity.reset(str(profile.get("name", "Profile")))
+
         def event(status, message, completed, total):
             self.executor.post_ui(lambda: self.activity.add(status, message, completed, total))
+
         def done(warnings, errors):
             self.executor.post_ui(lambda: self.activity.finish(warnings, errors))
+
         self._running_thread = self.profiles.run_async(profile, event, done)
 
     def show_status(self, status: str, message: str) -> None:
@@ -191,7 +237,9 @@ class MainWindow(ctk.CTk):
         self.activity.finish(1 if status == "warning" else 0, 1 if status == "error" else 0)
 
     def restore(self) -> None:
-        self.deiconify(); self.lift(); self.focus_force()
+        self.deiconify()
+        self.lift()
+        self.focus_force()
 
     def on_close(self) -> None:
         if self.config.data["settings"].get("minimize_to_tray") and self.tray:
