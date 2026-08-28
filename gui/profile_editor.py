@@ -7,8 +7,8 @@ from .components import PageHeader, Surface, ConfirmDialog
 from .theme import COLORS, FONT
 
 class ProfileEditor(ctk.CTkFrame):
-    def __init__(self, master, profile, save, cancel, delete, duplicate, shortcut, process_manager):
-        super().__init__(master, fg_color="transparent"); self.item = deepcopy(profile or {"name": "", "description": "", "icon": "◆", "open_apps": [], "close_apps": []}); self.save_cb, self.cancel_cb = save, cancel; self.process_manager = process_manager
+    def __init__(self, master, profile, save, cancel, delete, duplicate, shortcut, process_manager, executor):
+        super().__init__(master, fg_color="transparent"); self.item = deepcopy(profile or {"name": "", "description": "", "icon": "◆", "open_apps": [], "close_apps": []}); self.save_cb, self.cancel_cb = save, cancel; self.process_manager = process_manager; self.executor = executor
         PageHeader(self, "Profile Editor", "Configure the apps that shape this workspace.", "Save Profile", self._save).pack(fill="x", pady=(0, 16))
         self.scroll = ctk.CTkScrollableFrame(self, fg_color="transparent"); self.scroll.pack(fill="both", expand=True)
         general = self._section("General", "Name and describe this profile.")
@@ -46,14 +46,20 @@ class ProfileEditor(ctk.CTkFrame):
         dialog = ctk.CTkToplevel(self); dialog.title("Choose a running process"); dialog.geometry("600x500"); dialog.configure(fg_color=COLORS["bg"]); dialog.transient(self); dialog.grab_set()
         ctk.CTkLabel(dialog, text="Choose a running application", font=(FONT, 19, "bold")).pack(anchor="w", padx=22, pady=18)
         area = ctk.CTkScrollableFrame(dialog, fg_color="transparent"); area.pack(fill="both", expand=True, padx=15, pady=(0, 15))
-        for info in self.process_manager.running_processes(False):
-            def choose(name=info["name"]): self.process_name.delete(0, "end"); self.process_name.insert(0, name); dialog.destroy(); self._add_process()
-            ctk.CTkButton(area, text=f"{info['name']}   ·   PID {info['pid']}", anchor="w", fg_color=COLORS["surface"], hover_color=COLORS["surface_hover"], command=choose).pack(fill="x", pady=3)
+        loading = ctk.CTkLabel(area, text="Loading running applications…", text_color=COLORS["muted"]); loading.pack(pady=30)
+        def populate(items):
+            if not dialog.winfo_exists(): return
+            loading.destroy()
+            for info in items:
+                def choose(name=info["name"]): self.process_name.delete(0, "end"); self.process_name.insert(0, name); dialog.destroy(); self._add_process()
+                ctk.CTkButton(area, text=f"{info['name']}   ·   PID {info['pid']}", anchor="w", fg_color=COLORS["surface"], hover_color=COLORS["surface_hover"], command=choose).pack(fill="x", pady=3)
+        self.executor.submit_ui(self.process_manager.process_snapshot, populate, False)
     def _render_lists(self):
         for parent in (self.open_list, self.close_list):
             for child in parent.winfo_children(): child.destroy()
-        for index, app in enumerate(self.item["open_apps"]): self._list_row(self.open_list, app.get("name", "Application"), app.get("path", ""), lambda i=index: (self.item["open_apps"].pop(i), self._render_lists()))
+        for index, app in enumerate(self.item["open_apps"]): self._list_row(self.open_list, app.get("name", "Application"), app.get("path", ""), lambda i=index: (self.item["open_apps"].pop(i), self._render_lists()), app.get("path", ""))
         for index, name in enumerate(self.item["close_apps"]): self._list_row(self.close_list, str(name), "Process name", lambda i=index: (self.item["close_apps"].pop(i), self._render_lists()))
-    def _list_row(self, parent, title, subtitle, remove):
+    def _list_row(self, parent, title, subtitle, remove, icon_path=""):
         row = ctk.CTkFrame(parent, fg_color=COLORS["surface_hover"], corner_radius=9); row.pack(fill="x", pady=3); row.grid_columnconfigure(0, weight=1)
-        ctk.CTkLabel(row, text=title, font=(FONT, 12, "bold"), anchor="w").grid(row=0, column=0, sticky="ew", padx=12, pady=(8, 0)); ctk.CTkLabel(row, text=subtitle, text_color=COLORS["muted"], font=(FONT, 10), anchor="w").grid(row=1, column=0, sticky="ew", padx=12, pady=(0, 8)); ctk.CTkButton(row, text="Remove", width=70, fg_color="transparent", text_color=COLORS["danger"], hover_color=COLORS["surface"], command=remove).grid(row=0, column=1, rowspan=2, padx=8)
+        icon_label = ctk.CTkLabel(row, text="▣", font=(FONT, 22, "bold"), text_color=COLORS["accent"]); icon_label.grid(row=0, column=0, rowspan=2, padx=(12, 10)); row.grid_columnconfigure(1, weight=1)
+        ctk.CTkLabel(row, text=title, font=(FONT, 12, "bold"), anchor="w").grid(row=0, column=1, sticky="ew", pady=(8, 0)); ctk.CTkLabel(row, text=subtitle, text_color=COLORS["muted"], font=(FONT, 10), anchor="w").grid(row=1, column=1, sticky="ew", pady=(0, 8)); ctk.CTkButton(row, text="Remove", width=70, fg_color="transparent", text_color=COLORS["danger"], hover_color=COLORS["surface"], command=remove).grid(row=0, column=2, rowspan=2, padx=8)

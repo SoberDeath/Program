@@ -18,7 +18,11 @@ class SettingsPage(ctk.CTkFrame):
     def _section(self, title, subtitle):
         box = Surface(self); box.pack(fill="x", pady=7); ctk.CTkLabel(box, text=title, font=(FONT, 16, "bold")).pack(anchor="w", padx=20, pady=(16, 2)); ctk.CTkLabel(box, text=subtitle, font=(FONT, 11), text_color=COLORS["muted"]).pack(anchor="w", padx=20, pady=(0, 10)); return box
     def _switch(self, parent, label, key, settings):
-        switch = ctk.CTkSwitch(parent, text=label, command=lambda: self._changed(key, bool(switch.get())), font=(FONT, 12)); switch.pack(fill="x", padx=20, pady=9)
+        def toggle():
+            requested = bool(switch.get())
+            if not self._changed(key, requested):
+                switch.select() if not requested else switch.deselect()
+        switch = ctk.CTkSwitch(parent, text=label, command=toggle, font=(FONT, 12)); switch.pack(fill="x", padx=20, pady=9)
         if settings.get(key): switch.select()
     def _slider(self, parent, label, key, low, high, settings, suffix):
         row = ctk.CTkFrame(parent, fg_color="transparent"); row.pack(fill="x", padx=20, pady=9); row.grid_columnconfigure(0, weight=1)
@@ -27,9 +31,12 @@ class SettingsPage(ctk.CTkFrame):
         slider = ctk.CTkSlider(row, from_=low, to=high, command=change, progress_color=COLORS["accent"]); slider.set(float(settings[key])); slider.grid(row=0, column=1, padx=(20, 0)); parent.configure(height=100)
     def _changed(self, key, value):
         old = self.config.data["settings"].get(key); self.config.data["settings"][key] = value
+        if old == value:
+            return True
         if key == "start_with_windows":
             ok, message = self.startup.set_enabled(value)
             if not ok: self.config.data["settings"][key] = old
             self.status("success" if ok else "warning", message)
         elif key == "ui_scaling": ctk.set_widget_scaling(value)
         self.config.save()
+        return self.config.data["settings"].get(key) == value

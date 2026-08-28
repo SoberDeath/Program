@@ -1,6 +1,6 @@
 customtkinter==5.2.2
-psutil==6.1.1
+psutil>=6.1,<8
 pystray==0.19.5
-Pillow==11.1.0
-pywin32==308; platform_system == "Windows"
-pyinstaller==6.11.1
+Pillow>=11.1,<13
+pywin32>=308; platform_system == "Windows"
+pyinstaller>=6.11,<7

@@ -4,13 +4,13 @@ import customtkinter as ctk
 from .theme import COLORS, FONT
 
 class PageHeader(ctk.CTkFrame):
-    def __init__(self, master, title: str, subtitle: str, action_text: str | None = None, command: Callable[[], None] | None = None):
+    def __init__(self, master, title: str, subtitle: str, action_text: str | None = None, command: Callable[[], None] | None = None, action_image=None):
         super().__init__(master, fg_color="transparent")
         self.grid_columnconfigure(0, weight=1)
         ctk.CTkLabel(self, text=title, font=(FONT, 28, "bold"), text_color=COLORS["text"]).grid(row=0, column=0, sticky="w")
         ctk.CTkLabel(self, text=subtitle, font=(FONT, 13), text_color=COLORS["muted"]).grid(row=1, column=0, sticky="w", pady=(4, 0))
         if action_text:
-            ctk.CTkButton(self, text=action_text, command=command, height=42, corner_radius=10, fg_color=COLORS["accent"], hover_color=COLORS["accent_hover"], font=(FONT, 13, "bold")).grid(row=0, column=1, rowspan=2)
+            ctk.CTkButton(self, text=action_text, image=action_image, compound="left", command=command, height=42, corner_radius=10, fg_color=COLORS["accent"], hover_color=COLORS["accent_hover"], font=(FONT, 13, "bold")).grid(row=0, column=1, rowspan=2)
 
 class Surface(ctk.CTkFrame):
     def __init__(self, master, **kwargs):

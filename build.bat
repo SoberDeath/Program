@@ -6,5 +6,5 @@ py -3 -m pip install --upgrade -r requirements.txt || exit /b 1
 echo [App Manager] Building standalone Windows executable...
 py -3 -m PyInstaller --noconfirm --clean AppManager.spec || exit /b 1
 echo.
-echo Build complete: %CD%\dist\AppManager.exe
+echo Build complete: %CD%\dist\AppManager\AppManager.exe
 endlocal

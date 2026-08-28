@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 import threading
 import uuid
+import logging
 from copy import deepcopy
 from typing import Any, Callable
 
@@ -10,6 +11,7 @@ from .config_manager import ConfigManager
 from .process_manager import ProcessManager
 
 EventCallback = Callable[[str, str, int, int], None]
+LOGGER = logging.getLogger(__name__)
 
 
 class ProfileManager:
@@ -55,13 +57,21 @@ class ProfileManager:
             total, warnings, errors, completed = len(actions), 0, 0, 0
             settings = self.config.data["settings"]
             for name in profile.get("close_apps", []):
-                status, message = self.processes.close_by_name(str(name), float(settings["graceful_close_timeout"]))
+                try:
+                    status, message = self.processes.close_by_name(str(name), float(settings["graceful_close_timeout"]))
+                except Exception as exc:
+                    LOGGER.exception("Unexpected error closing %s", name)
+                    status, message = "error", f"{name} could not be closed: {exc}"
                 completed += 1; warnings += status == "warning"; errors += status == "error"
                 callback(status, message, completed, total)
             if profile.get("close_apps") and profile.get("open_apps"):
                 self.processes.delay(float(settings["close_launch_delay"]))
             for app in profile.get("open_apps", []):
-                status, message = self.processes.launch(str(app.get("path", "")), bool(settings["skip_running_apps"]))
+                try:
+                    status, message = self.processes.launch(str(app.get("path", "")), bool(settings["skip_running_apps"]))
+                except Exception as exc:
+                    LOGGER.exception("Unexpected error launching %s", app.get("path"))
+                    status, message = "error", f"{app.get('name', 'Application')} could not open: {exc}"
                 completed += 1; warnings += status == "warning"; errors += status == "error"
                 callback(status, message, completed, total)
             done(warnings, errors)
