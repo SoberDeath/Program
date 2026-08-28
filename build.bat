@@ -4,8 +4,17 @@ cd /d "%~dp0"
 title AppManager V1.0 // BUILD SYSTEM
 color 0B
 
-rem Animated boot banner. If Python is unavailable, continue to the normal menu.
-py -3 build_animation.py 2>nul
+rem Run the boot animation from the exact script directory.
+rem Prefer the Windows py launcher, then fall back to python.exe.
+if exist "%~dp0build_animation.py" (
+    where py >nul 2>&1
+    if not errorlevel 1 (
+        py -3 "%~dp0build_animation.py"
+    ) else (
+        where python >nul 2>&1
+        if not errorlevel 1 python "%~dp0build_animation.py"
+    )
+)
 
 :menu
 cls
