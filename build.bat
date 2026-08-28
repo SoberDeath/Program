@@ -4,6 +4,9 @@ cd /d "%~dp0"
 title AppManager V1.0 // BUILD SYSTEM
 color 0B
 
+rem Animated boot banner. If Python is unavailable, continue to the normal menu.
+py -3 build_animation.py 2>nul
+
 :menu
 cls
 call :logo
