@@ -70,8 +70,33 @@ def menu_box() -> str:
     return "\n".join(out)
 
 
+def progress_box(percent: int, message: str) -> str:
+    width = terminal_width()
+    inner = 86
+    filled = round(50 * max(0, min(percent, 100)) / 100)
+    bar = "[" + "█" * filled + "░" * (50 - filled) + f"]  {percent:>3}%"
+    top = "╔" + "═" * inner + "╗"
+    bottom = "╚" + "═" * inner + "╝"
+    out = [
+        center(top, width),
+        center("║" + "──────────────  QUICK BUILD  ──────────────".center(inner) + "║", width),
+        center("║" + " " * inner + "║", width),
+        center("║" + bar.center(inner) + "║", width),
+        center("║" + " " * inner + "║", width),
+        center("║" + message.center(inner) + "║", width),
+        center("║" + "PLEASE WAIT...".center(inner) + "║", width),
+        center("║" + " " * inner + "║", width),
+        center(bottom, width),
+    ]
+    return "\n".join(out)
+
+
 def final_screen() -> str:
     return banner_box(BANNER) + "\n\n" + menu_box()
+
+
+def quick_screen(percent: int, message: str) -> str:
+    return banner_box(BANNER) + "\n\n" + progress_box(percent, message)
 
 
 def draw(frame: str) -> None:
@@ -138,6 +163,16 @@ def render_header() -> None:
     draw(banner_box(BANNER))
 
 
+def render_quick() -> None:
+    try:
+        percent = int(sys.argv[2])
+    except (IndexError, ValueError):
+        percent = 0
+    message = " ".join(sys.argv[3:]).strip() or "WORKING"
+    sys.stdout.write(CLEAR + HOME)
+    draw(quick_screen(percent, message))
+
+
 def main() -> None:
     if os.name != "nt":
         return
@@ -151,6 +186,8 @@ def main() -> None:
         render_menu()
     elif mode == "--header":
         render_header()
+    elif mode == "--quick":
+        render_quick()
     else:
         animate()
 
