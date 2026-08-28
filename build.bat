@@ -4,33 +4,24 @@ cd /d "%~dp0"
 title AppManager V1.0 // BUILD SYSTEM
 color 0B
 
-rem Run the boot animation from the exact script directory.
-rem Prefer the Windows py launcher, then fall back to python.exe.
-if exist "%~dp0build_animation.py" (
+set "ANIM=%~dp0build_animation.py"
+
+rem Initial animated boot sequence. The animation finishes on the final build menu.
+if exist "%ANIM%" (
     where py >nul 2>&1
     if not errorlevel 1 (
-        py -3 "%~dp0build_animation.py"
+        py -3 "%ANIM%"
     ) else (
         where python >nul 2>&1
-        if not errorlevel 1 python "%~dp0build_animation.py"
+        if not errorlevel 1 python "%ANIM%"
     )
 )
 
 :menu
-cls
-call :logo
+if not "%choice%"=="" set "choice="
+if exist "%ANIM%" call :draw_menu
 echo.
-echo       +------------------------------------------------------------------+
-echo       ^|                         BUILD CONTROL                            ^|
-echo       +------------------------------------------------------------------+
-echo       ^|                                                                  ^|
-echo       ^|   [1]  QUICK BUILD        Progress screen only                    ^|
-echo       ^|   [2]  TECHNICAL BUILD    Full compiler / PyInstaller output     ^|
-echo       ^|   [3]  EXIT               Close build system                     ^|
-echo       ^|                                                                  ^|
-echo       +------------------------------------------------------------------+
-echo.
-set /p "choice=            SELECT MODE  ^> "
+set /p "choice=  SELECT MODE  ^> "
 if "%choice%"=="1" goto normal
 if "%choice%"=="2" goto technical
 if "%choice%"=="3" exit /b 0
@@ -50,12 +41,9 @@ call :quick_screen 95 "VERIFYING RELEASE ARTIFACT"
 if not exist "dist\AppManager\AppManager.exe" goto quick_build_error
 call :quick_screen 100 "BUILD COMPLETE"
 timeout /t 1 /nobreak >nul
-cls
-call :logo
+call :draw_header
 echo.
-echo       +------------------------------------------------------------------+
-echo       ^|                    APPMANAGER V1.0 READY                         ^|
-echo       +------------------------------------------------------------------+
+echo                 APPMANAGER V1.0 READY
 echo.
 echo          %CD%\dist\AppManager\AppManager.exe
 echo.
@@ -63,9 +51,9 @@ pause
 goto menu
 
 :technical
-cls
-call :logo
-call :modebar "TECHNICAL BUILD // VERBOSE TELEMETRY"
+call :draw_header
+echo.
+echo  TECHNICAL BUILD // VERBOSE TELEMETRY
 echo.
 call :progress 0 "INITIALIZING TECHNICAL PIPELINE"
 echo.
@@ -73,34 +61,31 @@ call :progress 10 "VERIFYING PYTHON ENVIRONMENT"
 py -3 --version || goto python_error
 echo.
 call :progress 20 "SYNCING BUILD DEPENDENCIES"
-echo       --------------------------------------------------------------------
+echo  --------------------------------------------------------------------
 py -3 -m pip install --upgrade -r requirements.txt || goto build_error
-echo       --------------------------------------------------------------------
+echo  --------------------------------------------------------------------
 echo.
 call :progress 45 "PURGING PREVIOUS BUILD CACHE"
 if exist "build" (
-    echo          REMOVE  ^>  %CD%\build
+    echo  REMOVE  ^>  %CD%\build
     rmdir /s /q "build"
 ) else (
-    echo          CACHE   ^>  CLEAN
+    echo  CACHE   ^>  CLEAN
 )
 echo.
 call :progress 55 "PYINSTALLER COMPILATION"
-echo       --------------------------------------------------------------------
+echo  --------------------------------------------------------------------
 py -3 -m PyInstaller --noconfirm --clean AppManager.spec || goto build_error
-echo       --------------------------------------------------------------------
+echo  --------------------------------------------------------------------
 echo.
 call :progress 95 "VERIFYING RELEASE ARTIFACT"
 if not exist "dist\AppManager\AppManager.exe" goto build_error
-echo          FOUND   ^>  %CD%\dist\AppManager\AppManager.exe
+echo  FOUND   ^>  %CD%\dist\AppManager\AppManager.exe
 echo.
 call :progress 100 "TECHNICAL BUILD COMPLETE"
 echo.
-echo       +------------------------------------------------------------------+
-echo       ^|  [OK] APPMANAGER V1.0 READY // BUILD PIPELINE NOMINAL             ^|
-echo       +------------------------------------------------------------------+
-echo.
-echo          RELEASE  ^>  %CD%\dist\AppManager\AppManager.exe
+echo  APPMANAGER V1.0 READY // BUILD PIPELINE NOMINAL
+echo  RELEASE  ^>  %CD%\dist\AppManager\AppManager.exe
 echo.
 pause
 goto menu
@@ -115,18 +100,13 @@ if %pct% GEQ 45 set "bar=##################......................"
 if %pct% GEQ 55 set "bar=######################.................."
 if %pct% GEQ 95 set "bar=######################################.."
 if %pct% GEQ 100 set "bar=########################################"
-cls
-call :logo
+call :draw_header
 echo.
-echo       ====================================================================
-echo                               QUICK BUILD
-echo       ====================================================================
-echo.
+echo                              QUICK BUILD
 echo.
 echo                [%bar%] %pct%%%
 echo.
 echo                     %msg%
-echo.
 echo.
 echo                         PLEASE WAIT...
 exit /b 0
@@ -142,68 +122,60 @@ if %pct% GEQ 55 set "bar=######################.................."
 if %pct% GEQ 95 set "bar=######################################.."
 if %pct% GEQ 100 set "bar=########################################"
 echo.
-echo       [%bar%] %pct%%%
-echo       ^> %msg%
+echo  [%bar%] %pct%%%
+echo  ^> %msg%
 exit /b 0
 
-:modebar
-echo.
-echo       ====================================================================
-echo          %~1
-echo       ====================================================================
+:draw_menu
+where py >nul 2>&1
+if not errorlevel 1 (
+    py -3 "%ANIM%" --menu
+    exit /b 0
+)
+where python >nul 2>&1
+if not errorlevel 1 python "%ANIM%" --menu
+exit /b 0
+
+:draw_header
+where py >nul 2>&1
+if not errorlevel 1 (
+    py -3 "%ANIM%" --header
+    exit /b 0
+)
+where python >nul 2>&1
+if not errorlevel 1 python "%ANIM%" --header
 exit /b 0
 
 :quick_python_error
-cls
-call :logo
+call :draw_header
 echo.
-echo       [ERROR] Python 3 was not found.
-echo.
-echo       Run TECHNICAL BUILD for diagnostic information.
+echo  [ERROR] Python 3 was not found.
+echo  Run TECHNICAL BUILD for diagnostic information.
 echo.
 pause
 goto menu
 
 :quick_build_error
-cls
-call :logo
+call :draw_header
 echo.
-echo       [FAILED] Quick Build could not complete.
-echo.
-echo       Run option [2] TECHNICAL BUILD to see the full error output.
+echo  [FAILED] Quick Build could not complete.
+echo  Run option [2] TECHNICAL BUILD to see the full error output.
 echo.
 pause
 goto menu
 
 :python_error
 echo.
-echo       +------------------------------------------------------------------+
-echo       ^|  [ERROR] PYTHON 3 NOT DETECTED                                   ^|
-echo       +------------------------------------------------------------------+
-echo          Install Python 3 and verify that the 'py' launcher is available.
+echo  [ERROR] PYTHON 3 NOT DETECTED
+echo  Install Python 3 and verify that the 'py' launcher is available.
 echo.
 pause
 goto menu
 
 :build_error
 echo.
-echo       +------------------------------------------------------------------+
-echo       ^|  [FAILED] BUILD PIPELINE INTERRUPTED                              ^|
-echo       +------------------------------------------------------------------+
-echo          Run [2] TECHNICAL BUILD for complete diagnostic output.
+echo  [FAILED] BUILD PIPELINE INTERRUPTED
+echo  Run [2] TECHNICAL BUILD for complete diagnostic output.
 echo.
 pause
 goto menu
-
-:logo
-echo.
-echo       +==================================================================+
-echo       ^|                                                                  ^|
-echo       ^|                        A P P M A N A G E R                         ^|
-echo       ^|                              V1.0                                ^|
-echo       ^|                                                                  ^|
-echo       ^|                  WINDOWS WORKSPACE CONTROL SYSTEM                ^|
-echo       ^|                                                                  ^|
-echo       +==================================================================+
-echo.
-exit /b 0
