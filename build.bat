@@ -185,19 +185,13 @@ goto menu
 
 :logo
 echo.
-echo          ############################################################################
-echo          ##                                                                        ##
-echo          ##     AAAAA   PPPP   PPPP      M   M   AAAAA   N   N   AAAAA   GGGG     ##
-echo          ##     A   A   P   P  P   P     MM MM   A   A   NN  N   A   A   G        ##
-echo          ##     AAAAA   PPPP   PPPP      M M M   AAAAA   N N N   AAAAA   G GGG    ##
-echo          ##     A   A   P      P         M   M   A   A   N  NN   A   A   G   G    ##
-echo          ##     A   A   P      P         M   M   A   A   N   N   A   A    GGG     ##
-echo          ##                                                                        ##
-echo          ##                            E R                                          ##
-echo          ##                                                                        ##
-echo          ############################################################################
-echo.
-echo                           APPMANAGER // VERSION 1.0
-echo                        WINDOWS WORKSPACE CONTROL SYSTEM
+echo       +==================================================================+
+echo       ^|                                                                  ^|
+echo       ^|                        A P P M A N A G E R                         ^|
+echo       ^|                              V1.0                                ^|
+echo       ^|                                                                  ^|
+echo       ^|                  WINDOWS WORKSPACE CONTROL SYSTEM                ^|
+echo       ^|                                                                  ^|
+echo       +==================================================================+
 echo.
 exit /b 0
