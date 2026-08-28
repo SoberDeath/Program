@@ -21,7 +21,7 @@ BACKGROUND_PROCESS_NAMES = {
 
 
 class ProcessManager:
-    """Safely inspects, starts, and stops desktop processes."""
+    """Safely inspects, starts, and stops desktop processes and shell targets."""
 
     def __init__(self, psutil_module: Any = psutil) -> None:
         self.psutil = psutil_module
@@ -46,7 +46,6 @@ class ProcessManager:
             return set()
 
     def process_snapshot(self, include_system: bool = False) -> list[dict[str, Any]]:
-        """Collect PID and name once; expensive properties are deliberately lazy."""
         started = time.perf_counter()
         window_pids = set() if include_system else self._window_process_ids()
         items: list[dict[str, Any]] = []
@@ -56,11 +55,7 @@ class ProcessManager:
                 name = str(process.info.get("name") or "Unknown")
             except (self.psutil.NoSuchProcess, self.psutil.AccessDenied, self.psutil.ZombieProcess, TypeError, ValueError):
                 continue
-            if not include_system and (
-                pid <= 4
-                or name.casefold() in BACKGROUND_PROCESS_NAMES
-                or (window_pids and pid not in window_pids)
-            ):
+            if not include_system and (pid <= 4 or name.casefold() in BACKGROUND_PROCESS_NAMES or (window_pids and pid not in window_pids)):
                 continue
             items.append({"pid": pid, "name": name})
         result = sorted(items, key=lambda item: (str(item["name"]).casefold(), item["pid"]))
@@ -68,14 +63,12 @@ class ProcessManager:
         return result
 
     def process_executable(self, pid: int) -> str:
-        """Resolve an executable path lazily for a displayed process row."""
         try:
             return str(self.psutil.Process(pid).exe() or "")
         except (self.psutil.NoSuchProcess, self.psutil.AccessDenied, self.psutil.ZombieProcess, OSError):
             return ""
 
     def running_processes(self, include_system: bool = False) -> list[dict[str, Any]]:
-        """Compatibility helper returning a snapshot with lazy paths resolved."""
         items = self.process_snapshot(include_system)
         for item in items:
             item["exe"] = self.process_executable(item["pid"])
@@ -96,11 +89,6 @@ class ProcessManager:
 
     @staticmethod
     def _request_windows_close(pid: int) -> bool:
-        """Post WM_CLOSE to every top-level window owned by *pid*.
-
-        This asks GUI applications to save state and close normally.  A process
-        without a window is handled by the terminate fallback below.
-        """
         if sys.platform != "win32":
             return False
         try:
@@ -149,13 +137,30 @@ class ProcessManager:
         return ("error", f"Could not close {process_name}") if errors else ("success", f"{process_name} closed")
 
     def launch(self, path: str, skip_running: bool) -> tuple[str, str]:
-        name = Path(path).stem or path
-        if not Path(path).is_file():
-            return "error", f"{name}: executable was not found"
-        if skip_running and self.is_running(path):
-            return "warning", f"{name} was already running"
+        target = Path(path)
+        name = target.stem or target.name or path
+        if not target.exists():
+            return "error", f"{name}: file or folder was not found"
+
+        # Executables can be checked against the running process list.
+        if target.is_file() and target.suffix.casefold() == ".exe":
+            if skip_running and self.is_running(path):
+                return "warning", f"{name} was already running"
+            try:
+                subprocess.Popen([str(target)], cwd=str(target.parent), close_fds=True)
+                return "success", f"{name} opened"
+            except (OSError, ValueError) as exc:
+                return "error", f"{name} could not open: {exc}"
+
+        # Documents, shortcuts, URLs saved as files, and folders must be opened
+        # through the Windows shell so their registered/default application is used.
         try:
-            subprocess.Popen([path], cwd=str(Path(path).parent), close_fds=True)
+            if sys.platform == "win32":
+                os.startfile(str(target))
+            elif target.is_dir():
+                subprocess.Popen(["xdg-open", str(target)])
+            else:
+                subprocess.Popen(["xdg-open", str(target)])
             return "success", f"{name} opened"
         except (OSError, ValueError) as exc:
             return "error", f"{name} could not open: {exc}"
