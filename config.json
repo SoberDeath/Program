@@ -1,0 +1,11 @@
+{
+  "profiles": [],
+  "settings": {
+    "skip_running_apps": true,
+    "minimize_to_tray": true,
+    "start_with_windows": false,
+    "close_launch_delay": 0.5,
+    "graceful_close_timeout": 3.0,
+    "ui_scaling": 1.0
+  }
+}
