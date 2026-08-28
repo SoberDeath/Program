@@ -22,76 +22,67 @@ BANNER = [
     "██║  ██║██║     ██║     ██║ ╚═╝ ██║██║  ██║██║ ╚████║██║  ██║╚██████╔╝███████╗██║  ██║",
     "╚═╝  ╚═╝╚═╝     ╚═╝     ╚═╝     ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚═╝  ╚═╝",
 ]
-
 GLITCH_CHARS = "#/\\01_<>░▒▓"
 SCAN_WIDTH = 54
 
 
 def terminal_width() -> int:
-    return max(118, shutil.get_terminal_size((120, 36)).columns)
+    return max(118, shutil.get_terminal_size((130, 38)).columns)
 
 
 def center(line: str, width: int) -> str:
     return line.center(width)
 
 
-def framed_banner(lines: list[str], status: str = "", progress: int | None = None) -> str:
+def banner_box(lines: list[str]) -> str:
     width = terminal_width()
     content_width = max(len(line) for line in BANNER)
-    top = "╔" + "═" * (content_width + 4) + "╗"
-    bottom = "╚" + "═" * (content_width + 4) + "╝"
-
+    inner = content_width + 8
+    top = "╔" + "═" * inner + "╗"
+    bottom = "╚" + "═" * inner + "╝"
     out = [center(top, width)]
+    out.append(center("║" + " " * inner + "║", width))
     for line in lines:
-        out.append(center("║  " + line.ljust(content_width) + "  ║", width))
-    out.append(center("║" + " " * (content_width + 4) + "║", width))
-    out.append(center("║" + "VERSION 1.0".center(content_width + 4) + "║", width))
-    out.append(center("║" + "WINDOWS WORKSPACE CONTROL SYSTEM".center(content_width + 4) + "║", width))
+        out.append(center("║    " + line.ljust(content_width) + "    ║", width))
+    out.append(center("║" + " " * inner + "║", width))
+    out.append(center("║" + ("──────────────  VERSION 1.0  ──────────────").center(inner) + "║", width))
+    out.append(center("║" + "WINDOWS WORKSPACE CONTROL SYSTEM".center(inner) + "║", width))
+    out.append(center("║" + " " * inner + "║", width))
     out.append(center(bottom, width))
-
-    if progress is not None:
-        progress = max(0, min(progress, SCAN_WIDTH))
-        bar = "[" + "█" * progress + "░" * (SCAN_WIDTH - progress) + "]"
-        out.extend(["", center(bar, width)])
-    if status:
-        out.append(center(status, width))
     return "\n".join(out)
 
 
-def build_menu() -> str:
+def menu_box() -> str:
     width = terminal_width()
-    menu_width = 82
-    top = "╔" + "═" * menu_width + "╗"
-    split = "╠" + "═" * menu_width + "╣"
-    bottom = "╚" + "═" * menu_width + "╝"
-    rows = [
-        top,
-        "║" + "BUILD CONTROL".center(menu_width) + "║",
-        split,
-        "║" + "".ljust(menu_width) + "║",
-        "║" + "   [1]  QUICK BUILD        Progress screen only".ljust(menu_width) + "║",
-        "║" + "   [2]  TECHNICAL BUILD    Full compiler / PyInstaller output".ljust(menu_width) + "║",
-        "║" + "   [3]  EXIT               Close build system".ljust(menu_width) + "║",
-        "║" + "".ljust(menu_width) + "║",
-        bottom,
+    inner = 86
+    top = "╔" + "═" * inner + "╗"
+    bottom = "╚" + "═" * inner + "╝"
+    out = [
+        center(top, width),
+        center("║" + "──────────────  BUILD CONTROL  ──────────────".center(inner) + "║", width),
+        center("║" + " " * inner + "║", width),
+        center("║" + "   [1]  QUICK BUILD         Progress screen only".ljust(inner) + "║", width),
+        center("║" + "   [2]  TECHNICAL BUILD     Full compiler / PyInstaller output".ljust(inner) + "║", width),
+        center("║" + "   [3]  EXIT                Close build system".ljust(inner) + "║", width),
+        center("║" + " " * inner + "║", width),
+        center(bottom, width),
     ]
-    return "\n".join(center(row, width) for row in rows)
+    return "\n".join(out)
 
 
 def final_screen() -> str:
-    return framed_banner(BANNER) + "\n\n" + build_menu()
+    return banner_box(BANNER) + "\n\n" + menu_box()
 
 
-def draw(frame: str, clear_tail: bool = True) -> None:
-    tail = "\033[J" if clear_tail else ""
-    sys.stdout.write(HOME + BRIGHT + frame + RESET + tail)
+def draw(frame: str) -> None:
+    sys.stdout.write(HOME + BRIGHT + frame + RESET + "\033[J")
     sys.stdout.flush()
 
 
 def reveal_frames() -> list[list[str]]:
     max_width = max(len(line) for line in BANNER)
-    frames: list[list[str]] = []
-    for visible in range(4, max_width + 5, 6):
+    frames = []
+    for visible in range(3, max_width + 6, 5):
         frames.append([line[:visible] for line in BANNER])
     frames.append(BANNER[:])
     return frames
@@ -99,16 +90,21 @@ def reveal_frames() -> list[list[str]]:
 
 def glitch(lines: list[str]) -> list[str]:
     result = [list(line) for line in lines]
-    positions: list[tuple[int, int]] = []
-    for row, line in enumerate(result):
-        for col, char in enumerate(line):
-            if char != " ":
-                positions.append((row, col))
-    if not positions:
-        return lines
-    for row, col in random.sample(positions, min(random.randint(8, 20), len(positions))):
+    positions = [(r, c) for r, row in enumerate(result) for c, ch in enumerate(row) if ch != " "]
+    for row, col in random.sample(positions, min(random.randint(8, 18), len(positions))):
         result[row][col] = random.choice(GLITCH_CHARS)
     return ["".join(line) for line in result]
+
+
+def animated_frame(lines: list[str], status: str, progress: int | None = None) -> str:
+    width = terminal_width()
+    out = [banner_box(lines)]
+    if progress is not None:
+        progress = max(0, min(progress, SCAN_WIDTH))
+        bar = "[" + "█" * progress + "░" * (SCAN_WIDTH - progress) + "]"
+        out += ["", center(bar, width)]
+    out += ["", center(status, width)]
+    return "\n".join(out)
 
 
 def animate() -> None:
@@ -116,20 +112,16 @@ def animate() -> None:
     sys.stdout.flush()
     try:
         for lines in reveal_frames():
-            draw(framed_banner(lines, "INITIALIZING // ASSEMBLING WORDMARK"))
+            draw(animated_frame(lines, "INITIALIZING // ASSEMBLING APPMANAGER"))
+            time.sleep(0.045)
+        for index in range(8):
+            draw(animated_frame(glitch(BANNER) if index % 2 == 0 else BANNER, "SIGNAL LOCK // STABILIZING"))
             time.sleep(0.05)
-
-        for index in range(10):
-            lines = glitch(BANNER) if index % 2 == 0 else BANNER
-            draw(framed_banner(lines, "SIGNAL LOCK // STABILIZING"))
-            time.sleep(0.05)
-
         for amount in range(0, SCAN_WIDTH + 1, 3):
-            draw(framed_banner(BANNER, "BOOT SEQUENCE // SYSTEM CHECK", amount))
-            time.sleep(0.03)
-
-        draw(framed_banner(BANNER, "SYSTEM READY // BUILD CONTROL ONLINE", SCAN_WIDTH))
-        time.sleep(0.30)
+            draw(animated_frame(BANNER, "BOOT SEQUENCE // SYSTEM CHECK", amount))
+            time.sleep(0.025)
+        draw(animated_frame(BANNER, "SYSTEM READY // BUILD CONTROL ONLINE", SCAN_WIDTH))
+        time.sleep(0.25)
         draw(final_screen())
     finally:
         sys.stdout.write(SHOW_CURSOR + RESET)
@@ -143,7 +135,7 @@ def render_menu() -> None:
 
 def render_header() -> None:
     sys.stdout.write(CLEAR + HOME)
-    draw(framed_banner(BANNER))
+    draw(banner_box(BANNER))
 
 
 def main() -> None:
@@ -154,7 +146,6 @@ def main() -> None:
     except (AttributeError, OSError):
         pass
     os.system("")
-
     mode = sys.argv[1].lower() if len(sys.argv) > 1 else "animate"
     if mode == "--menu":
         render_menu()
